@@ -19,6 +19,7 @@ import {
   getLocalStore,
   saveLocalStore,
   subscribeToStore,
+  updateKelompokScore,
   KelompokDoc,
   SoalDoc,
   HasilDoc,
@@ -203,12 +204,11 @@ function MainApp() {
                 {currentView === 'siswa' && (
                   <StudentPanel
                     groups={groups}
-                    onScoreUpdate={(delta, isCorrect) => {
-                      // Score update from student buzzer
-                      if (groups[0]) {
-                        sounds.playCorrect();
+                    onScoreUpdate={async (delta, isCorrect) => {
+                      const targetGroup = groups[0];
+                      if (targetGroup) {
+                        await updateKelompokScore(targetGroup.id, delta, isCorrect, 5);
                       }
-                      loadData();
                     }}
                     onEnterBattleArena={() => setCurrentView('pertandingan')}
                   />

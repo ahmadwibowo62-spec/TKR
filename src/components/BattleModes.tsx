@@ -88,24 +88,25 @@ export const BattleModes: React.FC<BattleModesProps> = ({
 
   // Speed Quiz 10s Timer effect
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (currentRound === 4 && !sqAnswered && sqTimer > 0) {
-      timer = setInterval(() => {
-        setSqTimer(prev => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setSqAnswered(true);
-            sounds.playWrong();
-            onScoreUpdate(-5, false);
-            return 0;
-          }
-          if (prev <= 4) {
-            sounds.playCountdown(false);
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (currentRound !== 4 || sqAnswered) return;
+
+    if (sqTimer <= 0) {
+      setSqAnswered(true);
+      sounds.playWrong();
+      const timeoutId = setTimeout(() => {
+        onScoreUpdate(-5, false);
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
+
+    if (sqTimer <= 4 && sqTimer > 1) {
+      sounds.playCountdown(false);
+    }
+
+    const timer = setInterval(() => {
+      setSqTimer(prev => Math.max(0, prev - 1));
+    }, 1000);
+
     return () => clearInterval(timer);
   }, [currentRound, sqTimer, sqAnswered, onScoreUpdate]);
 

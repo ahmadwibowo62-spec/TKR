@@ -184,7 +184,15 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 
 function notifyListeners() {
-  listeners.forEach(cb => cb());
+  setTimeout(() => {
+    listeners.forEach(cb => {
+      try {
+        cb();
+      } catch (err) {
+        console.warn('Store listener error:', err);
+      }
+    });
+  }, 0);
 }
 
 export function subscribeToStore(cb: Listener): () => void {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, Zap, ShieldAlert, Award, CheckCircle2, XCircle } from 'lucide-react';
 import { sounds } from '../utils/soundEffects';
 
@@ -27,33 +27,46 @@ export const VirtualBuzzer: React.FC<BuzzerProps> = ({
 }) => {
   const [pressed, setPressed] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(countdownSeconds);
+  const onAnswerRef = useRef(onAnswer);
+
+  useEffect(() => {
+    onAnswerRef.current = onAnswer;
+  }, [onAnswer]);
 
   const isCurrentBuzz = activeBuzzTeam === teamName;
 
+  // Reset countdown when this team captures the buzzer
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isCurrentBuzz && canAnswer && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(interval);
-            sounds.playWrong();
-            if (onAnswer) onAnswer(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (isCurrentBuzz && canAnswer) {
+      setTimeLeft(countdownSeconds);
     }
-    return () => clearInterval(interval);
-  }, [isCurrentBuzz, canAnswer, timeLeft, onAnswer]);
+  }, [isCurrentBuzz, canAnswer, countdownSeconds]);
+
+  // Pure countdown timer - never call parent callbacks inside state updater
+  useEffect(() => {
+    if (!isCurrentBuzz || !canAnswer) return;
+
+    if (timeLeft <= 0) {
+      sounds.playWrong();
+      const timeoutId = setTimeout(() => {
+        onAnswerRef.current?.(false);
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+
+    const intervalId = setInterval(() => {
+      setTimeLeft(prev => Math.max(0, prev - 1));
+    }, 1000);
+
+    return () => clearInterval(intervalId);
+  }, [isCurrentBuzz, canAnswer, timeLeft]);
 
   const handlePress = () => {
     if (disabled || isLocked || activeBuzzTeam) return;
     setPressed(true);
     sounds.playBuzzer();
-    onBuzz(teamName);
     setTimeLeft(countdownSeconds);
+    onBuzz(teamName);
     setTimeout(() => setPressed(false), 300);
   };
 

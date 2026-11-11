@@ -28,41 +28,53 @@ export const DigitalTimer: React.FC<TimerProps> = ({
   const [isMuted, setIsMuted] = useState<boolean>(sounds.getMuted());
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Handle timer completion when mode is 'turun' and seconds reach 0
   useEffect(() => {
-    if (isRunning) {
-      timerRef.current = setInterval(() => {
-        setCurrentSeconds(prev => {
-          if (mode === 'turun') {
-            if (prev <= 1) {
-              clearInterval(timerRef.current!);
-              setIsRunning(false);
-              sounds.playBuzzer();
-              if (onTimeEnd) onTimeEnd();
-              return 0;
-            }
-            if (prev <= 10 && prev > 1) {
-              sounds.playCountdown(false);
-            }
-            const next = prev - 1;
-            if (onTick) onTick(next, totalSeconds - next);
-            return next;
-          } else {
-            const next = prev + 1;
-            if (onTick) onTick(0, next);
-            return next;
-          }
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+    if (isRunning && mode === 'turun' && currentSeconds <= 0) {
+      setIsRunning(false);
+      sounds.playBuzzer();
+      const timeoutId = setTimeout(() => {
+        onTimeEnd?.();
+      }, 0);
+      return () => clearTimeout(timeoutId);
     }
+  }, [isRunning, mode, currentSeconds, onTimeEnd]);
+
+  // Audio countdown ticks
+  useEffect(() => {
+    if (isRunning && mode === 'turun' && currentSeconds <= 10 && currentSeconds > 1) {
+      sounds.playCountdown(false);
+    }
+  }, [isRunning, mode, currentSeconds]);
+
+  // Ticking interval
+  useEffect(() => {
+    if (!isRunning) {
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
+
+    timerRef.current = setInterval(() => {
+      setCurrentSeconds(prev => {
+        if (mode === 'turun') {
+          return Math.max(0, prev - 1);
+        } else {
+          return prev + 1;
+        }
+      });
+    }, 1000);
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [isRunning, mode, totalSeconds, onTimeEnd, onTick]);
+  }, [isRunning, mode]);
+
+  // Notify onTick safely
+  useEffect(() => {
+    if (isRunning && onTick) {
+      onTick(currentSeconds, mode === 'turun' ? totalSeconds - currentSeconds : currentSeconds);
+    }
+  }, [isRunning, currentSeconds, mode, totalSeconds, onTick]);
 
   const handleStart = () => {
     sounds.playCountdown(true);
